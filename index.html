@@ -1,0 +1,564 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f6b73" />
+    <title>Sagro SRL | Administracion</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css?v=20260825-publish-safe" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">S</span>
+        <div>
+          <strong>Sagro SRL</strong>
+          <small>Administracion</small>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Secciones">
+        <button class="nav-item active" data-view="dashboard">Tablero</button>
+        <button class="nav-item" data-view="pending">Pendientes</button>
+        <button class="nav-item" data-view="control">Control</button>
+        <button class="nav-item" data-view="ledger">Libro diario</button>
+        <button class="nav-item" data-view="cashflow">Flujo</button>
+        <button class="nav-item" data-view="orders">Ordenes</button>
+        <button class="nav-item" data-view="settlements">Liquidaciones</button>
+        <button class="nav-item" data-view="checks">Cheques</button>
+        <button class="nav-item" data-view="invoices">Facturas</button>
+        <button class="nav-item" data-view="stock">Stock</button>
+        <button class="nav-item" data-view="indicators">Indicadores</button>
+        <button class="nav-item" data-view="tools">Herramientas</button>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="ghost" id="exportData">Exportar</button>
+        <label class="ghost file-label">Importar<input id="importData" type="file" accept="application/json" /></label>
+      </div>
+    </aside>
+
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1 id="viewTitle">Tablero</h1>
+          <p id="viewSubtitle">Caja, vencimientos, stock y compromisos en un solo lugar.</p>
+        </div>
+        <div class="top-actions">
+          <button class="primary" data-open-modal="order">Nueva orden</button>
+          <button class="secondary" id="undoAction" type="button" disabled>Deshacer</button>
+          <span class="sync-status" id="syncStatus" title="Actualizar desde la planilla">Sincronizado</span>
+        </div>
+      </header>
+
+      <section class="filters">
+        <label>Desde<input id="filterFrom" type="date" /></label>
+        <label>Hasta<input id="filterTo" type="date" /></label>
+        <label>Actividad<select id="filterActivity"><option value="">Todas</option></select></label>
+        <label id="invoiceProviderFilterWrap" hidden>Proveedor<select id="invoiceProviderFilter"><option value="">Todos</option></select></label>
+        <button class="secondary clear-filters-button" id="clearAllFilters" type="button" title="Borrar todos los filtros">x Borrar filtros</button>
+      </section>
+
+      <section id="dashboard" class="view active">
+        <div class="dashboard-window-grid" id="dashboardWindowGrid"></div>
+        <article class="panel" id="kpiDetailPanel" hidden>
+          <div class="panel-head"><h2 id="kpiDetailTitle">Detalle</h2><span class="pill">tablero</span></div>
+          <div id="kpiDetail" class="stack"></div>
+        </article>
+        <div class="layout two">
+          <article class="panel">
+            <div class="panel-head"><h2>Proximos vencimientos</h2><span class="pill">30 dias</span></div>
+            <div id="dueList" class="stack"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><h2>Resumen por actividad</h2><span class="pill">ingresos / egresos / neto</span></div>
+            <div id="activitySummary" class="partner-summary"></div>
+          </article>
+        </div>
+        <article class="panel">
+          <div class="panel-head"><h2 id="activityDetailTitle">Detalle por actividad</h2><span class="pill">click en una actividad</span></div>
+          <div id="activityDetail" class="stack"></div>
+        </article>
+      </section>
+
+      <section id="pending" class="view">
+        <div class="pending-grid" id="pendingSummary"></div>
+        <article class="panel">
+          <div class="panel-head"><h2>Pendientes criticos</h2><span class="pill">vencidos y proximos</span></div>
+          <div class="cashflow-detail-row cashflow-detail-filters pending-filters">
+            <input data-pending-filter="date" placeholder="Fecha dd/mm">
+            <input data-pending-filter="detail" placeholder="Buscar detalle">
+            <select id="pendingStatusFilter">
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="pago parcial">Pago parcial</option>
+              <option value="pagada">Pagada</option>
+            </select>
+            <select id="pendingDirectionFilter">
+              <option value="">Ingresos y egresos</option>
+              <option value="income">Solo a cobrar</option>
+              <option value="expense">Solo a pagar</option>
+            </select>
+            <button class="secondary small" id="pendingClearFilters" type="button">x Borrar filtros</button>
+          </div>
+          <div id="pendingTable" class="stack"></div>
+        </article>
+      </section>
+
+      <section id="control" class="view">
+        <div class="control-summary" id="controlSummary"></div>
+        <article class="panel">
+          <div class="panel-head"><h2>Control de consistencia</h2><span class="pill">alertas internas</span></div>
+          <div id="controlIssues" class="stack"></div>
+        </article>
+      </section>
+
+      <section id="indicators" class="view">
+        <div class="filters indicator-filters">
+          <label>Ejercicio<select id="indicatorFiscalYearFilter"><option value="">Todos</option></select></label>
+        </div>
+        <article class="panel fiscal-data-panel">
+          <div class="panel-head"><h2>Datos del ejercicio</h2><span class="pill">hectareas / patrimonio</span></div>
+          <div class="fiscal-data-grid">
+            <label>Has agricolas<input id="fiscalAgriculturalHa" inputmode="decimal"></label>
+            <label>Has ganaderas<input id="fiscalCattleHa" inputmode="decimal"></label>
+            <label>Patrimonio neto<input id="fiscalEquity" inputmode="decimal"></label>
+            <label>Pasivo total<input id="fiscalTotalLiabilities" inputmode="decimal"></label>
+            <label>Activo corr. adicional<input id="fiscalCurrentAssetsExtra" inputmode="decimal"></label>
+            <label>Pasivo corr. adicional<input id="fiscalCurrentLiabilitiesExtra" inputmode="decimal"></label>
+            <label class="wide">Nota<input id="fiscalNotes"></label>
+            <button class="primary small" id="saveFiscalData" type="button">Guardar datos</button>
+          </div>
+        </article>
+        <div class="kpi-grid" id="indicatorKpis"></div>
+        <div class="layout two">
+          <article class="panel">
+            <div class="panel-head"><h2>Ingresos por actividad</h2><span class="pill">click para detalle</span></div>
+            <div id="incomeByActivity" class="stack"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><h2>Costos por actividad</h2><span class="pill">click para detalle</span></div>
+            <div id="costByActivity" class="stack"></div>
+          </article>
+        </div>
+        <article class="panel">
+          <div class="panel-head"><h2 id="indicatorDetailTitle">Composicion por actividad</h2><span class="pill">ingresos / costos</span></div>
+          <div class="layout two">
+            <div><h2>Ingresos</h2><div id="indicatorIncomeDetail" class="stack"></div></div>
+            <div><h2>Costos</h2><div id="indicatorCostDetail" class="stack"></div></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="ledger" class="view">
+        <article class="panel">
+          <div class="panel-head"><h2>Libro diario</h2><span class="pill">hechos y movimientos</span></div>
+          <div class="ledger-totals" id="ledgerTotals"></div>
+          <div class="table-wrap" id="ledgerTableWrap" data-fixed-scroll><table class="ledger-table"><thead>
+            <tr><th>Fecha</th><th>Clase</th><th>Comprobante</th><th>Entidad</th><th>Concepto</th><th class="num">Ingreso</th><th class="num">Egreso</th><th>Estado</th><th>Forma</th><th>Actividad</th><th>Imputacion</th><th>Nota</th></tr>
+            <tr class="ledger-filter-row">
+              <th><input data-ledger-filter="date" placeholder="dd/mm"></th>
+              <th><input data-ledger-filter="kind" placeholder="Filtrar"></th>
+              <th><input data-ledger-filter="receipt" placeholder="Filtrar"></th>
+              <th><select data-ledger-filter="counterparty"><option value="">Todas</option></select></th>
+              <th><input data-ledger-filter="concept" placeholder="Filtrar"></th>
+              <th><input data-ledger-filter="income" inputmode="decimal" placeholder="Importe"></th>
+              <th><input data-ledger-filter="expense" inputmode="decimal" placeholder="Importe"></th>
+              <th><select data-ledger-filter="status"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="pagado">Pagado</option><option value="pago parcial">Parcial</option><option value="cobrado">Cobrado</option><option value="endosado">Endosado</option></select></th>
+              <th><select data-ledger-filter="method"><option value="">Todas</option><option>Cheque</option><option>Transferencia</option><option>Efectivo</option><option>VEP</option><option>Canje</option><option>cuenta corriente</option><option>Tarjeta</option><option>Prestamo bancario</option><option>Mixto</option></select></th>
+              <th><select data-ledger-filter="activity"><option value="">Todas</option><option>Agricultura</option><option>Ganaderia</option><option>Impuestos</option><option>Financiero</option><option>Estructura</option><option>Gerenciamiento</option><option>Socios</option><option>INVERSIONES</option></select></th>
+              <th><input data-ledger-filter="account" placeholder="Filtrar"></th>
+              <th><input data-ledger-filter="notes" placeholder="Filtrar"></th>
+            </tr>
+          </thead><tbody id="ledgerTable"></tbody></table></div>
+          <div class="fixed-horizontal-scroll" id="ledgerFixedScroll" data-fixed-scrollbar data-target="ledgerTableWrap" aria-label="Desplazamiento horizontal del libro diario"><div data-fixed-scroll-spacer></div></div>
+        </article>
+      </section>
+
+      <section id="invoices" class="view">
+        <div class="section-actions"><button class="primary" data-open-modal="invoice">Nueva factura financiada</button></div>
+        <article class="panel">
+          <div class="table-wrap" id="invoiceTableWrap" data-fixed-scroll><table class="invoice-table"><thead><tr>
+            <th>Vence</th><th>Proveedor</th><th>Factura</th><th>Actividad</th><th>Imputacion</th><th>Moneda</th><th class="num">Saldo</th><th class="num">TC factura</th><th class="num">ARS estimado</th><th>Estado</th><th>Nota</th><th></th>
+          </tr></thead><tbody id="invoiceTable"></tbody><tfoot id="invoiceTotals"></tfoot></table></div>
+          <div class="fixed-horizontal-scroll" data-fixed-scrollbar data-target="invoiceTableWrap" aria-label="Desplazamiento horizontal de facturas"><div data-fixed-scroll-spacer></div></div>
+        </article>
+      </section>
+
+      <section id="orders" class="view">
+        <article class="panel">
+          <div class="filters order-filters">
+            <label>Tipo
+              <select id="orderTypeFilter">
+                <option value="">Todas</option>
+                <option value="pago">Ordenes de pago</option>
+                <option value="cobro">Ordenes de cobro</option>
+              </select>
+            </label>
+            <label>Entidad
+              <select id="orderEntityFilter"><option value="">Todas</option></select>
+            </label>
+            <label>Estado
+              <select id="orderStatusFilter">
+                <option value="">Todos</option>
+                <option value="pendiente">pendiente</option>
+                <option value="pagado">pagado</option>
+                <option value="pago parcial">pago parcial</option>
+                <option value="cobrado">cobrado</option>
+                <option value="endosado">endosado</option>
+              </select>
+            </label>
+            <label>Desde
+              <input id="orderFromFilter" type="date">
+            </label>
+            <label>Hasta
+              <input id="orderToFilter" type="date">
+            </label>
+          </div>
+          <div class="table-wrap" id="orderTableWrap" data-fixed-scroll><table class="order-table"><thead><tr>
+            <th>N°</th><th>Fecha</th><th>Tipo</th><th>Entidad</th><th>Origen</th><th>Comprobante</th><th>Forma</th><th>Estado</th><th class="num">Importe</th><th>Nota</th><th></th>
+          </tr></thead><tbody id="orderTable"></tbody><tfoot id="orderTotals"></tfoot></table></div>
+          <div class="fixed-horizontal-scroll" data-fixed-scrollbar data-target="orderTableWrap" aria-label="Desplazamiento horizontal de ordenes"><div data-fixed-scroll-spacer></div></div>
+        </article>
+      </section>
+
+      <section id="cashflow" class="view">
+        <article class="panel">
+          <div class="panel-head"><h2>Flujo de fondos mensual</h2><span class="pill">historial y proximos 12 meses</span></div>
+          <div class="table-wrap" id="cashflowTableWrap" data-fixed-scroll><table class="cashflow-table"><thead id="cashflowHead"></thead><tbody id="cashflowBody"></tbody></table></div>
+          <div class="fixed-horizontal-scroll" data-fixed-scrollbar data-target="cashflowTableWrap" aria-label="Desplazamiento horizontal del flujo"><div data-fixed-scroll-spacer></div></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head">
+            <h2 id="cashflowDetailTitle">Detalle del flujo</h2>
+            <div class="cashflow-detail-actions">
+              <button class="secondary small" id="cashflowClearDetailFilters" type="button">x Borrar filtros</button>
+              <button class="secondary small" id="cashflowClearMonth" data-cashflow-clear hidden>Ver todos</button>
+            </div>
+          </div>
+          <div class="cashflow-detail-row cashflow-detail-filters">
+            <input data-cashflow-detail-filter="date" placeholder="Fecha dd/mm">
+            <input data-cashflow-detail-filter="detail" placeholder="Buscar detalle">
+            <select id="cashflowStatusFilter">
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="pago parcial">Pago parcial</option>
+              <option value="pagado">Pagado</option>
+              <option value="cobrado">Cobrado</option>
+              <option value="depositado">Depositado</option>
+              <option value="endosado">Endosado</option>
+              <option value="pagada">Pagada</option>
+            </select>
+            <input data-cashflow-detail-filter="income" inputmode="decimal" placeholder="Ingresos">
+            <input data-cashflow-detail-filter="expense" inputmode="decimal" placeholder="Egresos">
+          </div>
+          <div id="cashflowDetail" class="stack"></div>
+        </article>
+      </section>
+
+      <section id="checks" class="view">
+        <div class="section-actions"><button class="primary" data-open-modal="check">Cargar cheque</button></div>
+        <article class="panel">
+          <div class="check-tabs" id="checkTabs"></div>
+          <div class="table-wrap" id="checkTableWrap" data-fixed-scroll><table class="check-table"><thead><tr>
+            <th>Vence</th><th>Numero</th><th>Orden</th><th>Entidad</th><th>Banco</th><th>CUIT</th><th>Estado</th><th class="num">Importe</th><th>Nota</th><th></th>
+          </tr></thead><tbody id="checkTable"></tbody><tfoot id="checkTotals"></tfoot></table></div>
+          <div class="fixed-horizontal-scroll" data-fixed-scrollbar data-target="checkTableWrap" aria-label="Desplazamiento horizontal de cheques"><div data-fixed-scroll-spacer></div></div>
+        </article>
+      </section>
+
+      <section id="settlements" class="view">
+        <div class="section-actions"><button class="primary" data-open-modal="settlement">Nueva liquidacion</button></div>
+        <article class="panel">
+          <div class="filters settlement-filters">
+            <label>Fecha desde<input id="settlementFromFilter" type="date"></label>
+            <label>Fecha hasta<input id="settlementToFilter" type="date"></label>
+            <label>Comprador / vendedor<select id="settlementBuyerFilter"><option value="">Todos</option></select></label>
+            <label>Producto<select id="settlementProductFilter"><option value="">Todos</option></select></label>
+          </div>
+          <div class="table-wrap" id="settlementTableWrap" data-fixed-scroll><table class="settlement-table"><thead><tr>
+            <th>Fecha</th><th>Operacion</th><th>Comprador</th><th>Producto</th><th class="num">Cantidad kg</th><th class="num">Subtotal</th><th class="num">Total cobro</th><th class="num">P. bruto/TN</th><th class="num">P. neto/TN</th><th>Campana</th><th>Acopio</th><th class="num">G. comerc. %</th><th>Estado</th><th>Nota</th><th></th>
+          </tr></thead><tbody id="settlementTable"></tbody></table></div>
+          <div class="fixed-horizontal-scroll" data-fixed-scrollbar data-target="settlementTableWrap" aria-label="Desplazamiento horizontal de liquidaciones"><div data-fixed-scroll-spacer></div></div>
+        </article>
+      </section>
+
+      <section id="stock" class="view">
+        <div class="stock-view-tabs" role="tablist" aria-label="Tipo de stock">
+          <button class="tab-button active" type="button" data-stock-view="grano">Stock agricola</button>
+          <button class="tab-button" type="button" data-stock-view="hacienda">Stock ganadero</button>
+        </div>
+        <div class="section-actions stock-actions">
+          <button class="primary" data-open-modal="stock">Ajustar stock</button>
+          <label>Stock al<input id="stockDateFilter" type="date"></label>
+          <button class="secondary small" id="stockDateClear" type="button">Hoy / actual</button>
+        </div>
+        <article class="panel" id="grainStockPanel"><div class="panel-head"><h2>Stock agricola</h2><span class="pill">kg</span></div><div id="grainStockList" class="stack"></div></article>
+        <article class="panel" id="cattleStockPanel" hidden><div class="panel-head"><h2>Stock ganadero</h2><span class="pill">cab. / kg</span></div><div id="cattleStockList" class="stack"></div></article>
+        <article class="panel">
+          <div class="panel-head"><h2 id="stockDetailTitle">Detalle de stock</h2><span class="pill" id="stockViewLabel">Stock agricola</span></div>
+          <div id="stockDetail" class="stack"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><h2 id="stockMovementTitle">Movimientos de stock</h2><span class="pill">historial</span></div>
+          <div class="table-wrap" id="stockTableWrap" data-fixed-scroll><table class="stock-table grain-stock-table"><thead id="stockTableHead"></thead><tbody id="stockTable"></tbody></table></div>
+          <div class="fixed-horizontal-scroll" data-fixed-scrollbar data-target="stockTableWrap" aria-label="Desplazamiento horizontal de stock"><div data-fixed-scroll-spacer></div></div>
+        </article>
+      </section>
+
+      <section id="tools" class="view">
+        <div class="tools-hub" id="toolsHub">
+          <button class="tool-card" type="button" data-tool-panel="accounts">
+            <strong>Plan de cuentas</strong>
+            <span>Actividades e imputaciones para cargar siempre igual.</span>
+          </button>
+          <button class="tool-card" type="button" data-tool-panel="entities">
+            <strong>Maestro de entidades</strong>
+            <span>Proveedores, compradores, bancos y organismos.</span>
+          </button>
+          <button class="tool-card" type="button" data-tool-panel="history">
+            <strong>Historial de cambios</strong>
+            <span>Ultimos movimientos registrados en la app.</span>
+          </button>
+          <button class="tool-card" type="button" data-tool-panel="guide">
+            <strong>Guia de uso</strong>
+            <span>Circuito recomendado para cargar informacion.</span>
+          </button>
+          <button class="tool-card" type="button" data-tool-panel="sync">
+            <strong>Sincronizacion Google Sheets</strong>
+            <span>Auditar diferencias antes de enviar o importar registros.</span>
+          </button>
+          <button class="tool-card" type="button" data-tool-panel="settings">
+            <strong>Ajustes</strong>
+            <span>Datos locales de la empresa para completar formularios.</span>
+          </button>
+          <div class="tool-card backup-tool-card">
+            <strong>Respaldo</strong>
+            <span>Exportar o restaurar la base local sin mezclar registros.</span>
+            <div class="tool-card-actions">
+              <button class="secondary small" id="exportDataTools" type="button">Exportar respaldo</button>
+              <button class="secondary small" id="exportRawCurrentDataTools" type="button">Exportar respaldo actual</button>
+              <label class="secondary small file-label tool-file-label">Restaurar JSON<input id="importDataTools" type="file" accept="application/json" /></label>
+            </div>
+          </div>
+        </div>
+        <article class="panel tool-panel" data-tool-section="accounts" hidden><div class="panel-head"><h2>Plan de negocio</h2><div class="panel-actions"><button class="secondary small" type="button" data-tool-back>Volver</button><button class="primary small" data-open-modal="account">Agregar</button></div></div><div id="accountList" class="account-list"></div></article>
+        <article class="panel tool-panel" data-tool-section="entities" hidden>
+          <div class="panel-head"><h2>Maestro de entidades</h2><div class="panel-actions"><button class="secondary small" type="button" data-tool-back>Volver</button><button class="primary small" data-open-modal="entity">Agregar entidad</button></div></div>
+          <div id="entityMaster" class="entity-master"></div>
+        </article>
+        <article class="panel tool-panel" data-tool-section="history" hidden>
+          <div class="panel-head"><h2>Historial de cambios</h2><div class="panel-actions"><button class="secondary small" type="button" data-tool-back>Volver</button><span class="pill">ultimos movimientos</span></div></div>
+          <div id="changeLogList" class="stack"></div>
+        </article>
+        <article class="panel tool-panel" data-tool-section="settings" hidden>
+          <div class="panel-head"><h2>Ajustes locales</h2><div class="panel-actions"><button class="secondary small" type="button" data-tool-back>Volver</button><span class="pill">solo este navegador</span></div></div>
+          <form id="companySettingsForm" class="form-grid">
+            <label>CUIT emisor de cheques<input name="emitterCuit" inputmode="numeric" autocomplete="off" placeholder="Cargar para precompletar cheques emitidos"></label>
+            <div class="wide form-actions"><button class="primary small" type="submit">Guardar ajustes</button></div>
+          </form>
+        </article>
+        <article class="panel tool-panel" data-tool-section="sync" hidden>
+          <div class="panel-head">
+            <h2>Sincronizacion Google Sheets</h2>
+            <div class="panel-actions">
+              <button class="secondary small" type="button" data-tool-back>Volver</button>
+              <span class="pill">auditoria manual</span>
+            </div>
+          </div>
+          <div class="sync-actions">
+            <button class="primary small" type="button" id="analyzeSyncDiffs">Analizar diferencias</button>
+            <button class="secondary small" type="button" id="analyzeSyncQueue">Analizar cola</button>
+            <button class="secondary small" type="button" id="dryRunQueueCleanup">Dry-run limpiar cola</button>
+            <button class="secondary small" type="button" id="dryRunEntityRegistryRepair">Dry-run entidades</button>
+            <button class="secondary small" type="button" id="completeEntityRegistryRepair">Completar registry entidades</button>
+            <button class="secondary small" type="button" id="applySafeQueueReconciliation">Aplicar reconciliacion segura</button>
+            <button class="secondary small" type="button" id="requeuePendingLocal">Reencolar pendientes locales</button>
+            <button class="secondary small" type="button" id="sendSelectedSync">Enviar seleccionados a Sheets</button>
+            <button class="secondary small" type="button" id="importSelectedSync">Importar seleccionados desde Sheets</button>
+            <button class="secondary small" type="button" id="resolveSyncConflicts">Resolver conflictos</button>
+          </div>
+          <div class="sync-summary" id="syncSummary"></div>
+          <div id="syncCollectionSummary" class="sync-summary"></div>
+          <div class="panel-head sync-log-head"><h2>Diagnostico de llamada</h2><span class="pill">temporal</span></div>
+          <div id="syncDebugList" class="stack"></div>
+          <div class="table-wrap sync-table-wrap">
+            <table class="compact-table">
+              <thead><tr><th></th><th>Estado</th><th>Coleccion</th><th>Registro</th><th>APP</th><th>SHEET</th><th>Diferencias</th></tr></thead>
+              <tbody id="syncAuditTable"></tbody>
+            </table>
+          </div>
+          <div class="panel-head sync-log-head"><h2>Conflictos de cheques</h2><span class="pill">solo diagnostico</span></div>
+          <div id="syncCheckConflictSummary" class="sync-summary"></div>
+          <div class="table-wrap sync-table-wrap">
+            <table class="compact-table">
+              <thead><tr><th>recordId</th><th>APP banco</th><th>SHEET banco</th><th>APP nro</th><th>SHEET nro</th><th>APP importe</th><th>SHEET importe</th><th>APP emision</th><th>SHEET emision</th><th>APP vence</th><th>SHEET vence</th><th>APP estado</th><th>SHEET estado</th><th>APP entidad</th><th>SHEET entidad</th><th>APP orden</th><th>SHEET orden</th><th>APP updatedAt</th><th>SHEET updatedAt</th><th>Diferencias</th></tr></thead>
+              <tbody id="syncCheckConflictTable"></tbody>
+            </table>
+          </div>
+          <div class="panel-head sync-log-head"><h2>Solo en App</h2><span class="pill">cola</span></div>
+          <div class="table-wrap sync-table-wrap">
+            <table class="compact-table">
+              <thead><tr><th>recordType</th><th>recordId</th><th>fecha</th><th>entidad</th><th>concepto</th><th>importe</th><th>tipo</th><th>estado</th></tr></thead>
+              <tbody id="syncOnlyAppTable"></tbody>
+            </table>
+          </div>
+          <div class="panel-head sync-log-head"><h2>Cola local pendiente</h2><span class="pill">solo diagnostico</span></div>
+          <div class="table-wrap sync-table-wrap">
+            <table class="compact-table">
+              <thead><tr><th>recordType</th><th>recordId</th><th>syncStatus</th><th>syncVersion</th><th>updatedAt</th><th>enqueuedAt</th><th>attempts</th></tr></thead>
+              <tbody id="syncQueueTable"></tbody>
+            </table>
+          </div>
+          <div class="panel-head sync-log-head"><h2>Dry-run limpieza de cola</h2><span class="pill">no modifica datos</span></div>
+          <div id="syncQueueCleanupSummary" class="sync-summary"></div>
+          <div class="table-wrap sync-table-wrap">
+            <table class="compact-table">
+              <thead><tr><th>Accion</th><th>Estado auditoria</th><th>recordType</th><th>recordId</th><th>Motivo</th></tr></thead>
+              <tbody id="syncQueueCleanupTable"></tbody>
+            </table>
+          </div>
+          <div class="panel-head sync-log-head"><h2>Dry-run completar registry de entidades</h2><span class="pill">solo lectura</span></div>
+          <div id="syncEntityRegistrySummary" class="sync-summary"></div>
+          <div class="table-wrap sync-table-wrap">
+            <table class="compact-table">
+              <thead><tr><th>Estado</th><th>recordId</th><th>Nombre</th><th>CUIT</th><th>stableKey local</th><th>stableKey registry</th><th>Motivo</th></tr></thead>
+              <tbody id="syncEntityRegistryTable"></tbody>
+            </table>
+          </div>
+          <div class="panel-head sync-log-head"><h2>Log de sincronizacion</h2><span class="pill">local</span></div>
+          <div id="syncLogList" class="stack"></div>
+        </article>
+        <article class="panel tool-panel" data-tool-section="guide" hidden>
+          <div class="panel-head"><h2>Guia de carga</h2><div class="panel-actions"><button class="secondary small" type="button" data-tool-back>Volver</button><span class="pill">orden recomendado</span></div></div>
+          <div class="flow-guide">
+            <section class="flow-lane pay">
+              <h3>Para cargar un pago</h3>
+              <div class="flow-steps">
+                <div class="flow-box"><strong>1. Entidad</strong><span>Elegir o crear proveedor, banco u organismo.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box"><strong>2. Origen</strong><span>Factura financiada, deuda, impuesto, servicio o compra directa.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box main"><strong>3. Orden de pago</strong><span>Cargar importe, vencimiento, actividad, imputacion, forma y nota.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box"><strong>4. Medio</strong><span>Transferencia, cheque, tarjeta, VEP, cuenta corriente o mixto.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box"><strong>5. Control</strong><span>Se ve en Flujo/Pendientes hasta marcarlo pagado.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box done"><strong>6. Libro diario</strong><span>Al confirmar pago queda como hecho real.</span></div>
+              </div>
+            </section>
+            <section class="flow-lane collect">
+              <h3>Para cargar un cobro</h3>
+              <div class="flow-steps">
+                <div class="flow-box"><strong>1. Entidad</strong><span>Elegir comprador, acopio o cliente.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box"><strong>2. Origen</strong><span>Liquidacion de granos/hacienda o cobro manual.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box main"><strong>3. Orden de cobro</strong><span>Trae importe desde liquidacion o se carga manualmente.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box"><strong>4. Medio</strong><span>Transferencia, cheque recibido, canje, efectivo o mixto.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box"><strong>5. Control</strong><span>Se ve en Flujo/Pendientes hasta marcarlo cobrado.</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box done"><strong>6. Libro diario</strong><span>Al confirmar cobro queda como ingreso real.</span></div>
+              </div>
+            </section>
+            <section class="flow-lane note">
+              <h3>Regla rapida</h3>
+              <div class="workflow-rules compact">
+                <div><strong>Actividad</strong><span>Rubro grande: Agricultura, Ganaderia, Impuestos, Financiero, etc.</span></div>
+                <div><strong>Imputacion</strong><span>Cuenta concreta del plan: Semillas, Arrendamiento, IVA, Fletes.</span></div>
+                <div><strong>Concepto</strong><span>Texto corto de la operacion.</span></div>
+                <div><strong>Nota</strong><span>Detalle libre: lote, campaña, aclaraciones o respaldo.</span></div>
+              </div>
+            </section>
+          </div>
+        </article>
+      </section>
+
+      <section id="workflow" class="view">
+        <article class="panel">
+          <div class="panel-head"><h2>Flujo de carga de informacion</h2><span class="pill">orden recomendado</span></div>
+          <div class="workflow-map">
+            <div class="workflow-card">
+              <span class="workflow-step">1</span>
+              <h3>Elegir Actividad e Imputacion</h3>
+              <p>Antes de cargar un movimiento, definir si corresponde a Agricultura, Ganaderia, Impuestos, Financiero, Estructura, Gerenciamiento o Inversiones.</p>
+              <button class="secondary small" data-view="tools">Ver plan</button>
+            </div>
+            <div class="workflow-card">
+              <span class="workflow-step">2</span>
+              <h3>Compras, gastos y deudas</h3>
+              <p>Si es una factura financiada en pesos o dolares, cargarla en Facturas. Si es un pago directo, transferencia, cuenta corriente o cheque emitido, cargar una Orden de pago.</p>
+              <div class="workflow-actions"><button class="secondary small" data-view="invoices">Facturas</button><button class="primary small" data-open-modal="order">Nueva orden</button></div>
+            </div>
+            <div class="workflow-card">
+              <span class="workflow-step">3</span>
+              <h3>Ventas y cobros</h3>
+              <p>Para granos o hacienda, cargar primero la Liquidacion. La app descuenta stock, calcula IVA/retenciones y abre la Orden de cobro con el importe correspondiente.</p>
+              <div class="workflow-actions"><button class="secondary small" data-view="settlements">Liquidaciones</button><button class="primary small" data-open-modal="settlement">Nueva liquidacion</button></div>
+            </div>
+            <div class="workflow-card">
+              <span class="workflow-step">4</span>
+              <h3>Cheques</h3>
+              <p>Los cheques emitidos o recibidos se cargan desde la orden cuando corresponda. Tambien se pueden cargar manualmente para cartera, deposito, endoso o seguimiento.</p>
+              <div class="workflow-actions"><button class="secondary small" data-view="checks">Cheques</button><button class="primary small" data-open-modal="check">Cargar cheque</button></div>
+            </div>
+            <div class="workflow-card">
+              <span class="workflow-step">5</span>
+              <h3>Stock</h3>
+              <p>Cargar stock inicial y ajustes por producto, campana y acopio. Las liquidaciones de granos y hacienda impactan automaticamente en los movimientos de stock.</p>
+              <div class="workflow-actions"><button class="secondary small" data-view="stock">Stock</button><button class="primary small" data-open-modal="stock">Ajustar stock</button></div>
+            </div>
+            <div class="workflow-card">
+              <span class="workflow-step">6</span>
+              <h3>Control diario</h3>
+              <p>Revisar Libro diario para ver pendientes vencidos, pagos, cobros e impuestos al cheque. Cambiar estados cuando una operacion se paga, cobra, deposita o endosa.</p>
+              <button class="secondary small" data-view="ledger">Libro diario</button>
+            </div>
+            <div class="workflow-card">
+              <span class="workflow-step">7</span>
+              <h3>Planificacion</h3>
+              <p>Usar Flujo para anticipar los 12 meses: facturas a vencer, ordenes pendientes, cheques futuros, impuestos y totales de ingresos/egresos. Para pagos mensuales, crear los proximos vencimientos desde la orden.</p>
+              <button class="secondary small" data-view="cashflow">Flujo</button>
+            </div>
+            <div class="workflow-card">
+              <span class="workflow-step">8</span>
+              <h3>Analisis</h3>
+              <p>Mirar Tablero e Indicadores para comparar actividades, costos, ingresos, stock y resultado. Entrar por actividad para revisar composicion.</p>
+              <div class="workflow-actions"><button class="secondary small" data-view="dashboard">Tablero</button><button class="secondary small" data-view="indicators">Indicadores</button></div>
+            </div>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><h2>Reglas rapidas de carga</h2><span class="pill">para cargar siempre igual</span></div>
+          <div class="workflow-rules">
+            <div><strong>Entidad</strong><span>Proveedor, comprador, banco u organismo que cobra/paga.</span></div>
+            <div><strong>Concepto</strong><span>Descripcion corta de la operacion: servicio siembra, canje soja, arrendamiento.</span></div>
+            <div><strong>Actividad</strong><span>Rubro grande del negocio: Agricultura, Ganaderia, Impuestos, Financiero.</span></div>
+            <div><strong>Imputacion</strong><span>Cuenta del plan: Semillas, Fertilizantes, Sueldos, IVA, Arrendamiento.</span></div>
+            <div><strong>Nota</strong><span>Detalle libre para lote, campana, observaciones o aclaraciones internas.</span></div>
+            <div><strong>Estado</strong><span>Pendiente hasta confirmar pago/cobro. Luego cambiar a pagado, cobrado, pago parcial o endosado.</span></div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <div class="modal-backdrop" id="modalBackdrop" hidden>
+      <form class="modal" id="modalForm">
+        <div class="modal-head"><h2 id="modalTitle">Nuevo</h2><button type="button" class="icon-button" id="closeModal" title="Cerrar">x</button></div>
+        <div id="modalFields" class="modal-fields"></div>
+        <div class="modal-actions"><button type="button" class="secondary" id="duplicateModal" hidden>Duplicar orden</button><button type="button" class="danger-button" id="deleteModal" hidden>Eliminar orden</button><button type="button" class="secondary" id="cancelModal">Cancelar</button><button class="primary" type="submit">Guardar</button></div>
+      </form>
+    </div>
+
+    <template id="emptyState"><div class="empty"><strong>No hay datos todavia</strong><span>Carga un registro para empezar.</span></div></template>
+    <datalist id="entityList"></datalist>
+    <datalist id="conceptList"></datalist>
+    <datalist id="stockProductList"></datalist>
+    <datalist id="stockCampaignList"></datalist>
+    <datalist id="stockPlaceList"></datalist>
+    <script src="./app.js?v=20260825-publish-safe"></script>
+  </body>
+</html>
+

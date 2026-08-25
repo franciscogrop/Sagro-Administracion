@@ -1,0 +1,30 @@
+# Datos reales, respaldos e importaciones
+outputs/
+sagro-*.json
+*.json
+*.xls
+*.xlsx
+*.xlsm
+*.csv
+*.tsv
+*.ndjson
+*.zip
+
+# Herramientas locales y pruebas
+tools/
+server.js
+*.py
+*.ps1
+node_modules/
+
+# Entregas y carpetas de trabajo historicas
+ENTREGA_*/
+.agents/
+.codex/
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.tmp
