@@ -1,9 +1,9 @@
-const CACHE_NAME = "sagro-admin-pwa-20260825-publish-safe";
+const CACHE_NAME = "sagro-admin-pwa-20260826-syncfix";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260825-publish-safe",
-  "./app.js?v=20260825-publish-safe",
+  "./styles.css?v=20260826-syncfix",
+  "./app.js?v=20260826-syncfix",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png",

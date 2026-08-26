@@ -1940,6 +1940,14 @@ th.num {
   color: var(--muted);
 }
 
+.ledger-table .bank-tax-row td.positive-text {
+  color: var(--ok);
+}
+
+.ledger-table .bank-tax-row td.negative-text {
+  color: var(--danger);
+}
+
 .settlement-table {
   min-width: 1680px;
 }

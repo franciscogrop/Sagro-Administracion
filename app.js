@@ -8,7 +8,7 @@ const DEVICE_ID_KEY = "sagro-admin-device-id";
 const REMOTE_QUEUE_KEY = "sagro-admin-sync-queue-v1";
 const REMOTE_LAST_PULL_KEY = "sagro-admin-last-pull-at";
 const SYNC_ENGINE_EXPECTED_VERSION = "granular-canonical-v5-multidevice-20260818";
-const PWA_CACHE_VERSION = "sagro-admin-pwa-20260825-publish-safe";
+const PWA_CACHE_VERSION = "sagro-admin-pwa-20260826-syncfix";
 const SAFE_COSMETIC_SYNC_RECORDS = new Set([
   "check:2dda86a6-77ed-40ba-b6e1-69009720cbc4",
 ]);
@@ -1473,7 +1473,18 @@ function processSyncQueue({ reason = "manual", pullFirst = true } = {}) {
     });
   }), Promise.resolve({ sent: 0, skipped: 0, conflicts: 0, errors: 0, retryQueue: [] }));
   return checkRemoteSyncVersion(url)
-    .then(() => pullFirst ? pullRemoteChanges({ silent: true }) : null)
+    .then(() => {
+      if (!pullFirst) return null;
+      return pullRemoteChanges({ silent: true }).catch((error) => {
+        addSyncLog("pull-before-push", {
+          origin: "google-sheets",
+          destination: "app",
+          result: "warning",
+          error: `No se pudo leer antes de enviar; se continua con upsert granular: ${error.message}`,
+        });
+        return null;
+      });
+    })
     .then(run)
     .then((summary) => {
       setSyncQueue(summary.retryQueue);
@@ -5968,7 +5979,7 @@ function createFutureOrders(order, futureDues = []) {
 }
 
 function ensureCurrentAccountOrder(order) {
-  if (order.skipCurrentAccountMirror || order.status === "anulado") {
+  if (order.skipCurrentAccountMirror || order.status === "anulado" || isFinalOrderStatus(order.status)) {
     const existing = state.orders.find((item) => item.sourceId === `currentAccount:${order.id}`);
     if (existing) deleteOrder(existing.id);
     return;
