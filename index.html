@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0f6b73" />
     <title>Sagro SRL | Administracion</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=20260826-syncfix" />
+    <link rel="stylesheet" href="./styles.css?v=20260831-checkfix" />
   </head>
   <body>
     <aside class="sidebar">
@@ -258,6 +258,9 @@
       <section id="checks" class="view">
         <div class="section-actions"><button class="primary" data-open-modal="check">Cargar cheque</button></div>
         <article class="panel">
+          <div class="filters-row compact-filters">
+            <label>Buscar numero<input id="checkNumberSearch" inputmode="numeric" autocomplete="off" placeholder="Numero de cheque"></label>
+          </div>
           <div class="check-tabs" id="checkTabs"></div>
           <div class="table-wrap" id="checkTableWrap" data-fixed-scroll><table class="check-table"><thead><tr>
             <th>Vence</th><th>Numero</th><th>Orden</th><th>Entidad</th><th>Banco</th><th>CUIT</th><th>Estado</th><th class="num">Importe</th><th>Nota</th><th></th>
@@ -558,7 +561,7 @@
     <datalist id="stockProductList"></datalist>
     <datalist id="stockCampaignList"></datalist>
     <datalist id="stockPlaceList"></datalist>
-    <script src="./app.js?v=20260826-syncfix"></script>
+    <script src="./app.js?v=20260831-checkfix"></script>
   </body>
 </html>
 

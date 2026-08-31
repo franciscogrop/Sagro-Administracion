@@ -8,7 +8,7 @@ const DEVICE_ID_KEY = "sagro-admin-device-id";
 const REMOTE_QUEUE_KEY = "sagro-admin-sync-queue-v1";
 const REMOTE_LAST_PULL_KEY = "sagro-admin-last-pull-at";
 const SYNC_ENGINE_EXPECTED_VERSION = "granular-canonical-v5-multidevice-20260818";
-const PWA_CACHE_VERSION = "sagro-admin-pwa-20260826-syncfix";
+const PWA_CACHE_VERSION = "sagro-admin-pwa-20260831-checkfix";
 const SAFE_COSMETIC_SYNC_RECORDS = new Set([
   "check:2dda86a6-77ed-40ba-b6e1-69009720cbc4",
 ]);
@@ -468,7 +468,8 @@ let selectedCashflowDetailFilters = {};
 let selectedPendingStatus = "";
 let selectedPendingDirection = "";
 let selectedPendingFilters = {};
-let selectedCheckStatus = "emitido";
+let selectedCheckStatus = "todos";
+let selectedCheckNumber = "";
 let selectedInvoiceProvider = "";
 let selectedOrderType = "";
 let selectedOrderEntity = "";
@@ -3235,6 +3236,10 @@ function isCheckComponent(component) {
   return method.includes("cheque") || method.includes("e-cheq") || method.includes("echeq");
 }
 
+function orderUsesOwnChecks(order) {
+  return ["Cheque", "E-cheq", "Mixto"].includes(order?.method) && order?.checkAction !== "endosado";
+}
+
 function isFinalFinancialStatus(status, type) {
   if (status === "anulado") return true;
   if (type === "cobro") return ["cobrado", "depositado", "endosado"].includes(status);
@@ -3787,6 +3792,7 @@ function isPreexistingDebt(invoice) {
 function renderChecks() {
   const checks = filterByDate(state.checks, "dueDate");
   const groups = [
+    ["todos", "Todos", () => true],
     ["emitido", "Emitidos", (item) => item.direction === "emitido" && item.status === "pendiente"],
     ["recibido", "Recibidos", (item) => item.direction === "recibido" && item.status === "pendiente"],
     ["pendiente", "Pendientes", (item) => item.status === "pendiente"],
@@ -3799,8 +3805,10 @@ function renderChecks() {
     return `<button class="tab-button ${selectedCheckStatus === key ? "active" : ""}" data-check-status="${key}">${label}<span>${count}</span></button>`;
   }).join("");
   const selectedGroup = groups.find(([key]) => key === selectedCheckStatus) || groups[0];
+  const numberNeedle = normalizeName(selectedCheckNumber).toLowerCase();
   const filtered = checks
     .filter(selectedGroup[2])
+    .filter((item) => !numberNeedle || normalizeName(item.number).toLowerCase().includes(numberNeedle))
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const rows = filtered.map((item) => {
       const orderNumber = item.orderNumber || state.orders.find((order) => order.id === item.orderId)?.orderNumber || "";
@@ -5941,6 +5949,7 @@ function saveOrder(data) {
   };
   upsert("orders", order);
   applyOrder(order);
+  if (orderUsesOwnChecks(order)) reconcileOrderStatusFromChecks(order.id);
   ensureCurrentAccountOrder(order);
   return order;
 }
@@ -6053,11 +6062,10 @@ function applyOrder(order) {
       && !orderId.startsWith(`order:${order.id}:taxsplit:`)
       && !orderId.startsWith(`${order.id}:fx:`);
   });
-  const usesCheck = order.method === "Cheque" || order.method === "E-cheq" || order.method === "Mixto";
+  const usesCheck = orderUsesOwnChecks(order) || order.checkAction === "endosado";
   if (!usesCheck) state.checks = state.checks.filter((item) => item.orderId !== order.id);
   if (order.status === "anulado") return;
-  if (usesCheck && order.checkAction !== "endosado") createCheckFromOrder(order);
-  if (isFinalOrderStatus(order.status) && usesCheck && order.checkAction !== "endosado") finalizeLinkedOrderChecks(order);
+  if (orderUsesOwnChecks(order)) createCheckFromOrder(order);
   if (!isFinalOrderStatus(order.status)) return;
   state.ledger.push(...ledgerRowsFromOrder(order));
   const chequeEmitidoPagado = order.type === "pago" && usesCheck && order.checkAction !== "endosado";
@@ -6239,15 +6247,6 @@ function createCheckFromOrder(order) {
     };
     const synced = markForSyncCollection("checks", check);
     state.checks = existing ? state.checks.map((item) => (item.id === existing.id ? synced : item)) : [...state.checks, synced];
-  });
-}
-
-function finalizeLinkedOrderChecks(order) {
-  const finalStatus = order.type === "cobro" ? "cobrado" : "pagado";
-  linkedOrderChecks(order).forEach((check) => {
-    updateCheckStatus(check, finalStatus);
-    markExistingRecordForSync("checks", check.id);
-    applyCheck(check);
   });
 }
 
@@ -6763,7 +6762,10 @@ document.addEventListener("change", (event) => {
       if (collection === "checks") updateCheckStatus(item, status.value);
       else item.status = status.value;
       markExistingRecordForSync(collection, item.id, { force: true });
-      if (collection === "orders") applyOrder(item);
+      if (collection === "orders") {
+        applyOrder(item);
+        if (orderUsesOwnChecks(item)) reconcileOrderStatusFromChecks(item.id);
+      }
       if (collection === "checks") {
         applyCheck(item);
         reconcileOrderStatusFromChecks(item.orderId || linkStandaloneCheckToOrder(item));
@@ -6821,7 +6823,8 @@ function clearAllFilters(event) {
   selectedPendingStatus = "";
   selectedPendingDirection = "";
   selectedPendingFilters = {};
-  selectedCheckStatus = "emitido";
+  selectedCheckStatus = "todos";
+  selectedCheckNumber = "";
   selectedInvoiceProvider = "";
   selectedOrderType = "";
   selectedOrderEntity = "";
@@ -7127,6 +7130,10 @@ $("#orderFromFilter").addEventListener("input", (event) => {
 $("#orderToFilter").addEventListener("input", (event) => {
   selectedOrderTo = event.target.value;
   renderOrders();
+});
+$("#checkNumberSearch")?.addEventListener("input", (event) => {
+  selectedCheckNumber = event.target.value;
+  renderChecks();
 });
 $$("[data-ledger-filter]").forEach((field) => {
   field.addEventListener(field.tagName === "SELECT" ? "change" : "input", (event) => {
