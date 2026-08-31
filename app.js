@@ -8,7 +8,7 @@ const DEVICE_ID_KEY = "sagro-admin-device-id";
 const REMOTE_QUEUE_KEY = "sagro-admin-sync-queue-v1";
 const REMOTE_LAST_PULL_KEY = "sagro-admin-last-pull-at";
 const SYNC_ENGINE_EXPECTED_VERSION = "granular-canonical-v5-multidevice-20260818";
-const PWA_CACHE_VERSION = "sagro-admin-pwa-20260831-checkfix";
+const PWA_CACHE_VERSION = "sagro-admin-pwa-20260831-check-search";
 const SAFE_COSMETIC_SYNC_RECORDS = new Set([
   "check:2dda86a6-77ed-40ba-b6e1-69009720cbc4",
 ]);
@@ -470,6 +470,7 @@ let selectedPendingDirection = "";
 let selectedPendingFilters = {};
 let selectedCheckStatus = "todos";
 let selectedCheckNumber = "";
+let selectedCheckAmount = "";
 let selectedInvoiceProvider = "";
 let selectedOrderType = "";
 let selectedOrderEntity = "";
@@ -3806,9 +3807,18 @@ function renderChecks() {
   }).join("");
   const selectedGroup = groups.find(([key]) => key === selectedCheckStatus) || groups[0];
   const numberNeedle = normalizeName(selectedCheckNumber).toLowerCase();
+  const amountNeedle = String(selectedCheckAmount || "").trim();
+  const amountValue = parseAmount(amountNeedle);
+  const amountDigits = amountNeedle.replace(/\D/g, "");
   const filtered = checks
     .filter(selectedGroup[2])
     .filter((item) => !numberNeedle || normalizeName(item.number).toLowerCase().includes(numberNeedle))
+    .filter((item) => {
+      if (!amountNeedle) return true;
+      const amount = Math.abs(Number(item.amount || 0));
+      if (amountValue && Math.abs(amount - Math.abs(amountValue)) < 0.01) return true;
+      return Boolean(amountDigits && String(Math.round(amount * 100)).includes(amountDigits));
+    })
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const rows = filtered.map((item) => {
       const orderNumber = item.orderNumber || state.orders.find((order) => order.id === item.orderId)?.orderNumber || "";
@@ -6825,6 +6835,7 @@ function clearAllFilters(event) {
   selectedPendingFilters = {};
   selectedCheckStatus = "todos";
   selectedCheckNumber = "";
+  selectedCheckAmount = "";
   selectedInvoiceProvider = "";
   selectedOrderType = "";
   selectedOrderEntity = "";
@@ -7133,6 +7144,10 @@ $("#orderToFilter").addEventListener("input", (event) => {
 });
 $("#checkNumberSearch")?.addEventListener("input", (event) => {
   selectedCheckNumber = event.target.value;
+  renderChecks();
+});
+$("#checkAmountSearch")?.addEventListener("input", (event) => {
+  selectedCheckAmount = event.target.value;
   renderChecks();
 });
 $$("[data-ledger-filter]").forEach((field) => {

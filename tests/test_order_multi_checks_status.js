@@ -11,6 +11,7 @@ assert(!app.includes("finalizeLinkedOrderChecks(order)"), "applyOrder no debe ma
 assert(app.includes('let selectedCheckStatus = "todos";'), "La vista de cheques debe iniciar en Todos.");
 assert(app.includes('["todos", "Todos", () => true]'), "La vista de cheques debe incluir pestana Todos.");
 assert(html.includes('id="checkNumberSearch"'), "La vista de cheques debe incluir buscador por numero.");
+assert(html.includes('id="checkAmountSearch"'), "La vista de cheques debe incluir buscador por importe.");
 
 function isFinalCheckStatus(status) {
   return ["pagado", "cobrado", "depositado", "endosado"].includes(status);
