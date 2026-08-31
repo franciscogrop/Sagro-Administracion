@@ -1727,14 +1727,19 @@ th.num {
 
 .order-table th:nth-child(9),
 .order-table td:nth-child(9) {
+  width: 220px;
+}
+
+.order-table th:nth-child(10),
+.order-table td:nth-child(10) {
   width: 118px;
   text-align: right;
   white-space: nowrap;
 }
 
-.order-table th:nth-child(10),
-.order-table td:nth-child(10) {
-  width: 220px;
+.order-table th:nth-child(11),
+.order-table td:nth-child(11) {
+  width: 180px;
 }
 
 .invoice-table {

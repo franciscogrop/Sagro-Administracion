@@ -8,7 +8,7 @@ const DEVICE_ID_KEY = "sagro-admin-device-id";
 const REMOTE_QUEUE_KEY = "sagro-admin-sync-queue-v1";
 const REMOTE_LAST_PULL_KEY = "sagro-admin-last-pull-at";
 const SYNC_ENGINE_EXPECTED_VERSION = "granular-canonical-v5-multidevice-20260818";
-const PWA_CACHE_VERSION = "sagro-admin-pwa-20260831-check-breakdown";
+const PWA_CACHE_VERSION = "sagro-admin-pwa-20260831-order-concept";
 const SAFE_COSMETIC_SYNC_RECORDS = new Set([
   "check:2dda86a6-77ed-40ba-b6e1-69009720cbc4",
 ]);
@@ -3514,11 +3514,11 @@ function renderOrders() {
     .filter((item) => matchesDateWindow(item, selectedOrderFrom, selectedOrderTo))
     .slice().sort((a, b) => b.date.localeCompare(a.date));
   const rows = filtered.map((item) => `
-    <tr class="clickable-row" data-edit="order" data-id="${item.id}"><td>${esc(item.orderNumber || "")}</td><td>${formatDate(item.date)}</td><td>${esc(item.type)}</td><td>${esc(item.counterparty)}</td><td><span class="cell-with-badge">${esc(orderSourceDisplay(item))}${orderBadge(item)}</span></td><td>${esc(orderReceiptDisplay(item))}</td><td>${esc(item.method)}</td><td>${statusSelect("orders", item.id, item.status)}</td><td class="num">${currency(item.amountArs)}</td><td>${esc(item.notes || "")}</td><td><button class="danger-link" data-delete="orders" data-id="${item.id}">Borrar</button></td></tr>
+    <tr class="clickable-row" data-edit="order" data-id="${item.id}"><td>${esc(item.orderNumber || "")}</td><td>${formatDate(item.date)}</td><td>${esc(item.type)}</td><td>${esc(item.counterparty)}</td><td><span class="cell-with-badge">${esc(orderSourceDisplay(item))}${orderBadge(item)}</span></td><td>${esc(orderReceiptDisplay(item))}</td><td>${esc(item.method)}</td><td>${statusSelect("orders", item.id, item.status)}</td><td>${esc(item.concept || "")}</td><td class="num">${currency(item.amountArs)}</td><td>${esc(item.notes || "")}</td><td><button class="danger-link" data-delete="orders" data-id="${item.id}">Borrar</button></td></tr>
   `);
-  $("#orderTable").innerHTML = rows.join("") || `<tr><td colspan="11">${emptyHtml()}</td></tr>`;
+  $("#orderTable").innerHTML = rows.join("") || `<tr><td colspan="12">${emptyHtml()}</td></tr>`;
   const total = filtered.reduce((sum, item) => sum + Number(item.amountArs || 0), 0);
-  $("#orderTotals").innerHTML = filtered.length ? `<tr class="table-total-row"><td colspan="8">Total ordenes filtradas (${filtered.length})</td><td class="num">${currency(total)}</td><td colspan="2"></td></tr>` : "";
+  $("#orderTotals").innerHTML = filtered.length ? `<tr class="table-total-row"><td colspan="9">Total ordenes filtradas (${filtered.length})</td><td class="num">${currency(total)}</td><td colspan="2"></td></tr>` : "";
 }
 
 function renderCashflow() {

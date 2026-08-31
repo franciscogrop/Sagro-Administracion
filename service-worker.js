@@ -1,9 +1,9 @@
-const CACHE_NAME = "sagro-admin-pwa-20260831-check-breakdown";
+const CACHE_NAME = "sagro-admin-pwa-20260831-order-concept";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260831-check-breakdown",
-  "./app.js?v=20260831-check-breakdown",
+  "./styles.css?v=20260831-order-concept",
+  "./app.js?v=20260831-order-concept",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png",
