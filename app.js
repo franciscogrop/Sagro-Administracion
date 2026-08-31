@@ -8,7 +8,7 @@ const DEVICE_ID_KEY = "sagro-admin-device-id";
 const REMOTE_QUEUE_KEY = "sagro-admin-sync-queue-v1";
 const REMOTE_LAST_PULL_KEY = "sagro-admin-last-pull-at";
 const SYNC_ENGINE_EXPECTED_VERSION = "granular-canonical-v5-multidevice-20260818";
-const PWA_CACHE_VERSION = "sagro-admin-pwa-20260831-check-search";
+const PWA_CACHE_VERSION = "sagro-admin-pwa-20260831-check-breakdown";
 const SAFE_COSMETIC_SYNC_RECORDS = new Set([
   "check:2dda86a6-77ed-40ba-b6e1-69009720cbc4",
 ]);
@@ -1893,6 +1893,9 @@ function parseAmount(value) {
   const parts = text.split(separator);
   const repeated = parts.length > 2;
   if (repeated) return Number(parts.join("")) * sign || 0;
+  if (parts.length === 2 && parts[1].length === 3 && parts[0].length <= 3) {
+    return Number(parts.join("")) * sign || 0;
+  }
   return normalizeWithDecimal(text.lastIndexOf(separator));
 }
 
@@ -5778,6 +5781,7 @@ function handleSubmit(event) {
     data.futureDues = collectFutureOrderDues();
   }
   if (!confirmLargeAmounts(modalMode, data)) return;
+  if (!confirmOrderPaymentBreakdown(modalMode, data)) return;
   rememberUndo(editingId ? `edicion de ${modalMode}` : `nuevo ${modalMode}`);
   beginUserSyncChange();
   let openAfterSave = null;
@@ -5831,6 +5835,19 @@ function confirmLargeAmounts(mode, data) {
   if (!amounts.length) return true;
   const detail = amounts.map((item) => `${item.label}: ${currency(item.amount)}`).join("\n");
   return confirm(`Atencion: hay importes mayores a ${currency(largeAmountWarning)}.\n\n${detail}\n\nConfirmar que los valores son correctos?`);
+}
+
+function confirmOrderPaymentBreakdown(mode, data) {
+  if (mode !== "order" || !["Cheque", "E-cheq", "Mixto"].includes(data.method) || data.checkAction === "endosado") return true;
+  const total = parseAmount(data.amountArs);
+  if (!total) return true;
+  const checksTotal = (data.checks || []).reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
+  const paymentComponentsTotal = (data.paymentComponents || []).reduce((sum, row) => sum + Math.abs(Number(row.amount || 0)), 0);
+  const transferTotal = Math.abs(parseAmount(data.transferAmount));
+  const currentAccountTotal = Math.abs(parseAmount(data.currentAccountAmount));
+  const breakdownTotal = roundMoney(checksTotal + paymentComponentsTotal + transferTotal + currentAccountTotal);
+  if (!breakdownTotal || Math.abs(breakdownTotal - Math.abs(total)) < 0.01) return true;
+  return confirm(`Atencion: los medios de pago no suman igual que la orden.\n\nOrden: ${currency(total)}\nCheques: ${currency(checksTotal)}\nTransferencia: ${currency(transferTotal)}\nCuenta corriente: ${currency(currentAccountTotal)}\nOtros medios: ${currency(paymentComponentsTotal)}\nTotal medios: ${currency(breakdownTotal)}\nDiferencia: ${currency(Math.abs(total) - breakdownTotal)}\n\nConfirmar de todos modos?`);
 }
 
 function upsert(collection, item) {
